@@ -14,6 +14,7 @@ log_info()  { echo -e "${CYAN}  [i] $1${NC}"; }
 log_error() { echo -e "${RED}  [✗] $1${NC}"; }
 
 # ── Markers ──────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODEL_DIR="/models"
 DOWNLOAD_MARKER="${MODEL_DIR}/.models_downloaded"
 MODEL_LOCK="${MODEL_DIR}/.download.lock"
@@ -172,11 +173,11 @@ print(f'PyTorch: {torch.__version__}, CUDA: {torch.version.cuda}, GPU: {torch.cu
         echo "  docker run -v /path/to/models:/models -v /path/to/output:/app/output \\"
         echo "    movie-recap \"https://youtu.be/xxxx\""
         echo ""
-        exec /app/run_pipeline.sh --help
+        exec "${SCRIPT_DIR}/run_pipeline.sh" --help
     fi
 
     # ── Jalankan pipeline dengan argumen ────────────────────
-    exec /app/run_pipeline.sh "$@"
+    exec "${SCRIPT_DIR}/run_pipeline.sh" "$@"
 }
 
 main "$@"
