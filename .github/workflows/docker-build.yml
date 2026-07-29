@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Hapus software bawaan runner (Android, .NET, Haskell, dll)
+      # 1. Alokasikan disk space ke working directory (/home/runner/work)
       - name: Maximize Build Space
         uses: easimon/maximize-build-space@v10
         with:
@@ -19,22 +19,20 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-          root-reserve-mb: 2048
+          root-reserve-mb: 1024
           swap-size-mb: 1024
 
-      # 2. Sapu bersih sisa toolchain bawaan untuk ruang maksimal (~40GB+)
-      - name: Free Disk Space (Extra Cleanup)
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo apt-get clean
-          df -h
-
-      # 3. Checkout Kode Project
+      # 2. Checkout Kode Project
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      # 3. Setup Docker Buildx dengan penyimpanan di partisi 103GB (/home/runner/work)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            env.TMPDIR=/home/runner/work/tmp
 
       # 4. Login ke Docker Hub
       - name: Log in to Docker Hub
@@ -43,10 +41,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 5. Build & Push Image
+      # 5. Build & Push Image memanfaatkan Buildx Context
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: sujinwo555/movie-recap:v1
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
