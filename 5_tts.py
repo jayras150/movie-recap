@@ -37,6 +37,7 @@ def generate_tts(
 ) -> Path:
     """
     Generate audio narasi dari teks skrip menggunakan OmniVoice.
+    OmniVoice menggunakan parameter device_map=, bukan device=.
     """
     import torch
 
@@ -44,6 +45,10 @@ def generate_tts(
     if device == "cuda" and not torch.cuda.is_available():
         log.warning("CUDA tidak tersedia, fallback ke CPU")
         device = "cpu"
+
+    # OmniVoice menerima device_map, bukan device
+    # "cuda" → "cuda:0" , "cpu" → "cpu"
+    device_map = f"{device}:0" if device == "cuda" else device
 
     # Baca skrip
     with open(script_path, "r", encoding="utf-8") as f:
@@ -54,7 +59,7 @@ def generate_tts(
 
     word_count = len(script_text.split())
     log.info("Memproses TTS untuk %d kata...", word_count)
-    log.info("Model: %s | Voice: %s | Device: %s", model_name, voice, device)
+    log.info("Model: %s | Voice: %s | Device: %s", model_name, voice, device_map)
 
     try:
         from omnivoice import OmniVoice
@@ -65,7 +70,7 @@ def generate_tts(
     # Muat model
     log.info("Memuat model OmniVoice...")
     load_start = time.time()
-    tts = OmniVoice.from_pretrained(model_name, device=device)
+    tts = OmniVoice.from_pretrained(model_name, device_map=device_map)
     log.info("Model dimuat dalam %.1f dtk", time.time() - load_start)
 
     # Generate audio

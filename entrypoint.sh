@@ -117,10 +117,14 @@ import torch
 from omnivoice import OmniVoice
 
 # Prioritaskan CUDA, fallback ke CPU
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# OmniVoice menggunakan device_map= bukan device=
+if torch.cuda.is_available():
+    device_map = 'cuda:0'
+else:
+    device_map = 'cpu'
 
-print(f'Memuat OmniVoice (device={device})...')
-tts = OmniVoice.from_pretrained('k2-fsa/OmniVoice', device=device)
+print(f'Memuat OmniVoice (device_map={device_map})...')
+tts = OmniVoice.from_pretrained('k2-fsa/OmniVoice', device_map=device_map)
 print('OmniVoice siap.')
 " 2>&1 | tail -5
     log_ok "OmniVoice model siap."
