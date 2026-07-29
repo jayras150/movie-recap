@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  movie-recap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: movie-recap:latest
+    container_name: movie-recap
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+      - HF_HOME=/models/huggingface
+      - TORCH_HOME=/models/torch
+    volumes:
+      # Models (persistent — download sekali, jalan terus)
+      - model_cache:/models
+      # Output video final
+      - ./output:/app/output
+      # Download folder (opsional, untuk debug)
+      - ./downloads:/app/downloads
+    working_dir: /app
+    entrypoint: ["/app/entrypoint.sh"]
+    # Contoh menjalankan pipeline dengan URL YouTube
+    # command: ["https://www.youtube.com/watch?v=xxxxxx"]
+    command: ["--help"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  model_cache:
+    name: movie-recap-models

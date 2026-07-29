@@ -39,7 +39,8 @@ def download_youtube(url: str, output_dir: Path) -> tuple[Path, Path]:
     log.info("Mengunduh video dari: %s", url)
     video_cmd = [
         "yt-dlp",
-        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "-clear
+        f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "--merge-output-format", "mp4",
         "-o", str(video_path),
         "--progress",

@@ -2,12 +2,25 @@
 
 Sistem otomatisasi pembuat alur cerita (movie recap) berbasis AI yang siap di-deploy dan dijalankan di **Vast.ai Instance** (Ubuntu Linux, GPU Nvidia RTX 3060 12GB VRAM).
 
+Tersedia dalam dua mode:
+- **🐳 Docker** — Produksi, reproducible, push ke Docker Hub (direkomendasikan)
+- **🔧 Native** — Manual di Vast.ai / VPS / Linux langsung
+
+---
+
 ## 📋 Daftar Isi
 
 - [Fitur](#fitur)
 - [Persyaratan Sistem](#persyaratan-sistem)
 - [Struktur Proyek](#struktur-proyek)
-- [Cara Menjalankan](#cara-menjalankan)
+- [🐳 Docker (Direkomendasikan)](#-docker-direkomendasikan)
+  - [Build Image](#build-image)
+  - [Jalankan Container](#jalankan-container)
+  - [Docker Compose](#docker-compose)
+  - [Push ke Docker Hub](#push-ke-docker-hub)
+  - [Volume & Cache Model](#volume--cache-model)
+  - [GitHub Actions](#github-actions)
+- [🔧 Native (Vast.ai / VPS)](#-native-vastai--vps)
   - [1. Upload Proyek ke Vast.ai](#1-upload-proyek-ke-vastai)
   - [2. Setup Environment (Sekali Saja)](#2-setup-environment-sekali-saja)
   - [3. Jalankan Pipeline](#3-jalankan-pipeline)
@@ -51,7 +64,12 @@ Sistem otomatisasi pembuat alur cerita (movie recap) berbasis AI yang siap di-de
 
 ```
 /workspace/movie-recap/
-├── setup.sh                 # ⚙️ Instalasi awal environment (jalankan sekali)
+├── Dockerfile               # 🐳 Production-ready Docker image
+├── .dockerignore            # Docker ignore rules
+├── entrypoint.sh            # 🚪 Container entrypoint (download model otomatis)
+├── docker-compose.yml       # 🐳 Docker Compose untuk local development
+├── .github/workflows/build.yml  # 🤖 GitHub Actions CI/CD
+├── setup.sh                 # ⚙️ Instalasi environment (ringan, tanpa download model)
 ├── requirements.txt         # 📦 Daftar dependensi Python
 ├── 1_download.py            # 🎥 Download YouTube video & audio
 ├── 2_audio_cleaner.py       # 🔊 Pemisahan vokal (Demucs)
@@ -67,7 +85,120 @@ Sistem otomatisasi pembuat alur cerita (movie recap) berbasis AI yang siap di-de
 
 ---
 
-## 🚀 Cara Menjalankan
+## 🐳 Docker (Direkomendasikan)
+
+### Build Image
+
+```bash
+# Build lokal
+docker build -t movie-recap:latest .
+
+# Build dengan custom base image (jika perlu CUDA version beda)
+docker build --build-arg BASE_IMAGE=pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime -t movie-recap:latest .
+```
+
+### Jalankan Container
+
+**Pipeline lengkap (download model otomatis + proses video):**
+
+```bash
+# Model akan otomatis di-download saat pertama kali container jalan
+# Volume /models akan menyimpan cache model supaya tidak perlu download ulang
+
+docker run --gpus all \
+  -v movie-recap-models:/models \
+  -v ./output:/app/output \
+  movie-recap:latest "https://www.youtube.com/watch?v=xxxxxx"
+```
+
+**Container pertama kali — model AI di-download otomatis:**
+
+```bash
+docker run --gpus all -v movie-recap-models:/models movie-recap:latest --help
+# Proses download akan terlihat di log (sekitar 10-20 menit tergantung koneksi)
+# Setelah selesai, model tersimpan di volume "movie-recap-models"
+```
+
+**Pipeline dengan bahasa Inggris:**
+
+```bash
+docker run --gpus all \
+  -v movie-recap-models:/models \
+  -v ./output:/app/output \
+  movie-recap:latest "https://youtu.be/xxxxxx" --language en
+```
+
+**Akses shell di dalam container:**
+
+```bash
+docker run --gpus all -it --rm \
+  -v movie-recap-models:/models \
+  movie-recap:latest bash
+```
+
+### Docker Compose
+
+```bash
+# Build & jalankan
+docker compose up --build
+
+# Pipeline dengan URL tertentu
+docker compose run --rm movie-recap "https://www.youtube.com/watch?v=xxxxxx"
+
+# Hanya download model (tanpa proses)
+docker compose run --rm movie-recap --help
+
+# Hapus container setelah selesai
+docker compose down
+```
+
+### Push ke Docker Hub
+
+```bash
+# Login
+docker login
+
+# Tag
+docker tag movie-recap:latest username/movie-recap:latest
+
+# Push
+docker push username/movie-recap:latest
+```
+
+### Volume & Cache Model
+
+| Volume | Mount di Container | Fungsi |
+|--------|--------------------|--------|
+| `movie-recap-models` | `/models` | Cache model AI (~12 GB). Dibuat otomatis saat `docker run -v` |
+| `./output` | `/app/output` | Video final hasil pipeline |
+| `./downloads` | `/app/downloads` | File intermediate (opsional, untuk debug) |
+
+Model AI **tidak di-download saat build image**. Semua model di-download **saat container pertama kali dijalankan** oleh `entrypoint.sh`. Setelah itu, volume `movie-recap-models` bisa dipakai ulang tanpa perlu download ulang.
+
+### GitHub Actions
+
+Workflow: `.github/workflows/build.yml`
+
+Trigger:
+- Push ke branch `main` / `master` → build + push `latest`
+- Push tag `v*` → build + push dengan tag versi
+- Pull Request → build saja (tanpa push)
+- Manual dispatch via GitHub UI
+
+**Setup secrets di GitHub:**
+1. Buka repo → Settings → Secrets and variables → Actions
+2. Tambah:
+   - `DOCKER_USERNAME` — username Docker Hub
+   - `DOCKER_PASSWORD` — password Docker Hub (atau token)
+
+**Cache GitHub Actions:**
+Menggunakan `type=gha` (GitHub Actions cache) untuk mempercepat build. Cache otomatis tersimpan di GitHub, tidak perlu konfigurasi tambahan.
+
+---
+
+## 🔧 Native (Vast.ai / VPS)
+
+> Gunakan mode ini jika kamu menjalankan langsung di Vast.ai, VPS Ubuntu, atau Linux tanpa Docker.
 
 ### 1. Upload Proyek ke Vast.ai
 
@@ -94,15 +225,13 @@ chmod +x setup.sh run_pipeline.sh
 ```
 
 **Proses setup meliputi:**
-- Update system packages
-- Install FFmpeg, build tools, dan utilities
-- Install Python 3.10+ dependencies
-- Install PyTorch dengan CUDA 12.1
-- Install semua dependensi dari `requirements.txt`
-- **Pre-download semua model weight** (Demucs, Faster-Whisper, Qwen3-VL, OmniVoice) ke cache
+- Install system packages yang belum ada (FFmpeg, git, curl)
+- Install semua dependensi Python dari `requirements.txt`
 - Verifikasi CUDA dan GPU
 
-> ⏱ **Estimasi waktu setup:** 15–30 menit (tergantung kecepatan internet dan CPU).
+> ⏱ **Estimasi waktu setup:** 3–5 menit.
+>
+> **Model AI tidak di-download saat setup.** Model akan di-download otomatis saat pertama kali `run_pipeline.sh` dijalankan (oleh `entrypoint.sh`).
 
 ### 3. Jalankan Pipeline
 

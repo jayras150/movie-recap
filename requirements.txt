@@ -8,10 +8,6 @@ numpy>=1.24.0,<2.0.0
 soundfile>=0.12.0
 soxr>=0.5.0
 
-# --- PyTorch (CUDA 12.1 — install via setup.sh or manually) ---
-# torch
-# torchaudio
-
 # --- YouTube Download ---
 yt-dlp>=2024.12.0
 
