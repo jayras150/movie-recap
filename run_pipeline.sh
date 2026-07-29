@@ -66,7 +66,7 @@ run_module() {
     if [ ! -f "${script}" ]; then
         log_error "File tidak ditemukan: ${script}"
         exit 1
-    }
+    fi
 
     log_info "Menjalankan: python3 ${script} ${args}"
     echo ""
@@ -172,7 +172,7 @@ main() {
     # Module 1: Download
     run_module "1. Download Video & Audio" \
         "1_download.py" \
-        "\"${YT_URL}\""
+        "${YT_URL}"
 
     # Module 2: Audio Cleaner (Vocal Separation)
     run_module "2. Audio Cleaner (Demucs)" \
