@@ -77,13 +77,21 @@ def generate_tts(
     log.info("Mengenerate audio narasi... (ini akan memakan waktu proporsional dengan panjang teks)")
     gen_start = time.time()
 
-    # OmniVoice biasanya mengembalikan audio sebagai numpy array (sample_rate, audio_data)
+    # OmniVoice mengembalikan list of numpy arrays, setiap array shape (T,) pada 24 kHz
     audio_output = tts.generate(script_text, voice=voice)
 
     # Simpan sebagai WAV
     import soundfile as sf
+    import numpy as np
 
-    if isinstance(audio_output, tuple):
+    # OmniVoice: output adalah list[np.ndarray] dengan sample rate 24000
+    if isinstance(audio_output, list) and len(audio_output) > 0:
+        # Ambil channel pertama (mono)
+        audio_data = audio_output[0]
+        sample_rate = 24000
+        log.info("Output OmniVoice: list of %d array(s), menggunakan array[0] shape=%s, sample_rate=%d",
+                 len(audio_output), audio_data.shape, sample_rate)
+    elif isinstance(audio_output, tuple):
         # (audio_data, sample_rate) atau (sample_rate, audio_data)
         if len(audio_output) == 2:
             if isinstance(audio_output[0], int):
@@ -102,6 +110,13 @@ def generate_tts(
         audio_data = audio_output
         sample_rate = 24000
         log.warning("Menggunakan sample rate default 24000 Hz")
+
+    # Pastikan audio_data adalah numpy array 1D (mono)
+    if isinstance(audio_data, list):
+        audio_data = np.array(audio_data)
+    if hasattr(audio_data, 'ndim') and audio_data.ndim > 1:
+        # Jika multi-channel, ambil channel pertama (mono)
+        audio_data = audio_data[:, 0]
 
     sf.write(str(output_path), audio_data, sample_rate)
     elapsed = time.time() - gen_start
