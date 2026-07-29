@@ -19,34 +19,41 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-          root-reserve-mb: 1024
-          swap-size-mb: 1024
+          root-reserve-mb: 512
+          swap-size-mb: 512
 
-      # 2. Checkout Kode Project
+      # 2. Pindahkan /var/lib/docker secara fisik ke partisi 103GB (/home/runner/work)
+      - name: Move Docker Root to 103GB Partition
+        run: |
+          sudo service docker stop
+          sudo mkdir -p /home/runner/work/docker-data
+          if [ -d /var/lib/docker ]; then
+            sudo mv /var/lib/docker/* /home/runner/work/docker-data/ 2>/dev/null || true
+            sudo rm -rf /var/lib/docker
+          fi
+          sudo ln -s /home/runner/work/docker-data /var/lib/docker
+          sudo service docker start
+          df -h
+
+      # 3. Checkout Kode Project
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 3. Setup Docker Buildx dengan penyimpanan di partisi 103GB (/home/runner/work)
+      # 4. Setup Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:latest
-            env.TMPDIR=/home/runner/work/tmp
 
-      # 4. Login ke Docker Hub
+      # 5. Login ke Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 5. Build & Push Image memanfaatkan Buildx Context
+      # 6. Build & Push Image
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: sujinwo555/movie-recap:v1
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
