@@ -65,9 +65,19 @@ print('Demucs siap.')
     # ── 2. Faster-Whisper Large-v3 ──────────────────────────
     log_info "[2/4] Mendownload Faster-Whisper model..."
     python3 -c "
+import torch
 from faster_whisper import WhisperModel
-print('Memuat Faster-Whisper Large-v3...')
-model = WhisperModel('Systran/faster-whisper-large-v3', device='cpu', compute_type='float16')
+
+# Prioritaskan CUDA, fallback ke CPU
+if torch.cuda.is_available():
+    device = 'cuda'
+    compute_type = 'float16'
+else:
+    device = 'cpu'
+    compute_type = 'int8'
+
+print(f'Memuat Faster-Whisper Large-v3 (device={device}, compute={compute_type})...')
+model = WhisperModel('Systran/faster-whisper-large-v3', device=device, compute_type=compute_type)
 print('Faster-Whisper siap.')
 " 2>&1 | tail -5
     log_ok "Faster-Whisper model siap."
@@ -103,9 +113,14 @@ print('Qwen3-VL siap.')
     # ── 4. OmniVoice ────────────────────────────────────────
     log_info "[4/4] Mendownload OmniVoice model..."
     python3 -c "
+import torch
 from omnivoice import OmniVoice
-print('Memuat OmniVoice...')
-tts = OmniVoice.from_pretrained('k2-fsa/OmniVoice', device='cpu')
+
+# Prioritaskan CUDA, fallback ke CPU
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+print(f'Memuat OmniVoice (device={device})...')
+tts = OmniVoice.from_pretrained('k2-fsa/OmniVoice', device=device)
 print('OmniVoice siap.')
 " 2>&1 | tail -5
     log_ok "OmniVoice model siap."

@@ -97,6 +97,10 @@ cd ~/movie-recap
 chmod +x setup.sh run_pipeline.sh entrypoint.sh
 
 # Jalankan setup (ringan — hanya install dependencies & verifikasi CUDA)
+
+apt-get remove -y libnode-dev && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs && python3 -m pip install -U yt-dlp yt-dlp-ejs
+
+
 ./setup.sh
 ```
 

@@ -38,6 +38,13 @@ def generate_tts(
     """
     Generate audio narasi dari teks skrip menggunakan OmniVoice.
     """
+    import torch
+
+    # ── CUDA/CPU fallback logic ─────────────────────────────
+    if device == "cuda" and not torch.cuda.is_available():
+        log.warning("CUDA tidak tersedia, fallback ke CPU")
+        device = "cpu"
+
     # Baca skrip
     with open(script_path, "r", encoding="utf-8") as f:
         script_text = f.read().strip()

@@ -48,6 +48,17 @@ def transcribe_audio(
     Transkripsi audio vokal menggunakan Faster-Whisper.
     Returns list of segments: [{start, end, text}, ...]
     """
+    import torch
+
+    # ── CUDA/CPU fallback logic ─────────────────────────────
+    if device == "cuda" and not torch.cuda.is_available():
+        log.warning("CUDA tidak tersedia, fallback ke CPU dengan compute_type=int8")
+        device = "cpu"
+        compute_type = "int8"
+    elif device == "cpu" and compute_type == "float16":
+        log.warning("compute_type=float16 tidak didukung di CPU, fallback ke int8")
+        compute_type = "int8"
+
     log.info("Memuat model Faster-Whisper: %s", model_name)
     log.info("Device: %s | Compute: %s | Language: %s", device, compute_type, language)
 

@@ -51,9 +51,16 @@ def separate_vocals(input_wav: Path, output_dir: Path) -> tuple[Path, Path]:
     log.info("Memproses pemisahan audio: %s", input_wav.name)
     import subprocess
 
+    import torch
+
+    # Deteksi device: prioritaskan CUDA
+    demucs_device = "cuda" if torch.cuda.is_available() else "cpu"
+    log.info("Demucs device: %s", demucs_device)
+
     cmd = [
         sys.executable, "-m", "demucs",
         "--two-stems", "vocals",       # pisahkan vocals vs no_vocals
+        "--device", demucs_device,      # paksa CUDA/CPU eksplisit
         "-o", str(DEMUCS_OUTPUT_DIR),
         str(input_wav),
     ]
